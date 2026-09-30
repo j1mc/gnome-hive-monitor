@@ -201,7 +201,22 @@ class HiveIndicator extends PanelMenu.Button {
     }
 
     _url() {
-        return this._settings.get_string('hive-url').trim().replace(/\/+$/, '');
+        const raw = this._settings.get_string('hive-url').trim();
+        if (!raw)
+            return '';
+
+        let parsed;
+        try {
+            parsed = new URL(raw);
+        } catch {
+            return '';
+        }
+
+        if (parsed.protocol !== 'https:' || !parsed.hostname ||
+            parsed.username || parsed.password)
+            return '';
+
+        return parsed.href.replace(/\/+$/, '');
     }
 
     /* Abort the in-flight status poll and invalidate its reply, so a status
