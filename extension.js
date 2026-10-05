@@ -34,6 +34,7 @@ import {
 
 import {fetchWidgetStatus} from './hiveClient.js';
 import {fileIssue} from './githubClient.js';
+import {validateConfig, formatValidationErrors} from './configValidator.js';
 
 const AGENT_URL = 'gnome-shell-hive-monitor/1';
 
@@ -283,10 +284,29 @@ class HiveIndicator extends PanelMenu.Button {
 
     _openIdeaDialog() {
         const repo = this._settings.get_string('github-repo').trim();
-        const tok = this._settings.get_string('github-token').trim();
-        if (!repo || !tok) {
+        const hiveUrl = this._hiveUrl();
+        const hiveToken = this._settings.get_string('hive-token').trim();
+        const labels = this._settings.get_string('idea-labels').trim();
+        
+        // Validate configuration before opening dialog
+        const validation = validateConfig({
+            repo,
+            hiveUrl,
+            hiveToken,
+            labels
+        });
+        
+        if (!validation.valid) {
             Main.notify(_('Hive Monitor'),
-                _('Set a repository and GitHub token in Settings first.'));
+                _('Configuration error:\n%s').format(formatValidationErrors(validation.errors)));
+            this._ext.openPreferences();
+            return;
+        }
+        
+        const tok = this._settings.get_string('github-token').trim();
+        if (!tok) {
+            Main.notify(_('Hive Monitor'),
+                _('GitHub token is required. Set it in Settings.'));
             this._ext.openPreferences();
             return;
         }

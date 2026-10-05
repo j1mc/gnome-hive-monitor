@@ -15,6 +15,8 @@ import {
     gettext as _,
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+import {validateGitHubRepo, validateURL, validateLabels} from './configValidator.js';
+
 export default class HiveMonitorPrefs extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
@@ -34,7 +36,19 @@ export default class HiveMonitorPrefs extends ExtensionPreferences {
 
         const url = new Adw.EntryRow({title: _('Hive URL')});
         url.set_text(settings.get_string('hive-url'));
-        url.connect('changed', () => settings.set_string('hive-url', url.get_text()));
+        const validateHiveUrl = () => {
+            const result = validateURL(url.get_text());
+            if (!result.valid) {
+                url.add_css_class('error');
+                url.set_subtitle(result.error);
+            } else {
+                url.remove_css_class('error');
+                url.set_subtitle('');
+            }
+            settings.set_string('hive-url', url.get_text());
+        };
+        url.connect('changed', validateHiveUrl);
+        url.connect('focus-out-event', validateHiveUrl);
         conn.add(url);
 
         const token = new Adw.PasswordEntryRow({title: _('Hive Token')});
@@ -81,7 +95,19 @@ export default class HiveMonitorPrefs extends ExtensionPreferences {
 
         const repo = new Adw.EntryRow({title: _('Repository')});
         repo.set_text(settings.get_string('github-repo'));
-        repo.connect('changed', () => settings.set_string('github-repo', repo.get_text()));
+        const validateRepo = () => {
+            const result = validateGitHubRepo(repo.get_text());
+            if (!result.valid) {
+                repo.add_css_class('error');
+                repo.set_subtitle(result.error);
+            } else {
+                repo.remove_css_class('error');
+                repo.set_subtitle('Format: owner/name');
+            }
+            settings.set_string('github-repo', repo.get_text());
+        };
+        repo.connect('changed', validateRepo);
+        repo.connect('focus-out-event', validateRepo);
         ideas.add(repo);
 
         const ghTok = new Adw.PasswordEntryRow({title: _('GitHub Token')});
