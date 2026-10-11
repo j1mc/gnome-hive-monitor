@@ -38,6 +38,12 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
  *   "unreachable" and "your token is wrong" need different fixes.
  */
 export function fetchWidgetStatus(session, cancellable, url, token, {onSuccess, onInvalidUrl, onError, onAuthError}) {
+    // Enforce HTTPS: authentication tokens must not be transmitted over HTTP
+    if (!url.startsWith('https://')) {
+        onInvalidUrl(_('Hive URL must use HTTPS (https://...), not HTTP. Authentication tokens cannot be sent over unencrypted connections.'));
+        return;
+    }
+
     const msg = Soup.Message.new('GET', `${url}/api/widget`);
     if (!msg) {
         onInvalidUrl(_('That hive URL is not valid.'));
