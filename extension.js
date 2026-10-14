@@ -34,6 +34,8 @@ import {
 
 import {fetchWidgetStatus} from './hiveClient.js';
 import {fileIssue} from './githubClient.js';
+import {validateIdeaForm} from './ideaValidator.js';
+import {submitIdea} from './ideaSubmitter.js';
 
 const AGENT_URL = 'gnome-shell-hive-monitor/1';
 
@@ -102,13 +104,18 @@ class IdeaDialog extends ModalDialog.ModalDialog {
     }
 
     _submit() {
-        const title = this._title.get_text().trim();
-        if (!title) {
-            this._status.set_text(_('A title is required.'));
+        const title = this._title.get_text();
+        const body = this._body.get_text().trim();
+        
+        // Use validator to check form validity
+        const validation = validateIdeaForm(title, body);
+        if (!validation.valid) {
+            this._status.set_text(validation.error);
             return;
         }
+        
         this.close();
-        this._onSubmit(title, this._body.get_text().trim());
+        this._onSubmit(title.trim(), body);
     }
 });
 
@@ -297,8 +304,8 @@ class HiveIndicator extends PanelMenu.Button {
         const labels = this._settings.get_string('idea-labels')
             .split(',').map(s => s.trim()).filter(s => s.length > 0);
 
-        fileIssue(this._session, this._cancel, repo, token, labels, title, body, {
-            onFiled: (num, htmlUrl) => {
+        submitIdea(this._session, this._cancel, repo, token, labels, title, body, {
+            onSuccess: (num, htmlUrl) => {
                 if (htmlUrl)
                     this._lastIssueUrl = htmlUrl;
                 Main.notify(_('Hive Monitor'),
