@@ -12,6 +12,7 @@ import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {classifyNetworkError, tryParseJson, extractGitHubErrorMessage} from './httpClient.js';
 
 const AGENT_URL = 'gnome-shell-hive-monitor/1';
 
@@ -62,7 +63,7 @@ export function fileIssue(session, cancellable, repo, token, labels, title, body
             try {
                 bytes = session_.send_and_read_finish(res);
             } catch (e) {
-                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
+                if (classifyNetworkError(e) !== 'cancelled') {
                     console.error(`[HiveMonitor] Network error filing idea to GitHub: ${e.message ?? e}`);
                     onError(_('Could not file the idea: %s').format(String(e.message ?? e)));
                 }
@@ -70,24 +71,19 @@ export function fileIssue(session, cancellable, repo, token, labels, title, body
             }
             const code = msg.get_status();
             if (code === 201) {
+                const json = tryParseJson(bytes);
                 let num = '';
                 let htmlUrl = null;
-                try {
-                    const j = JSON.parse(new TextDecoder().decode(bytes.get_data()));
-                    num = j.number ? `#${j.number}` : '';
-                    if (j.html_url)
-                        htmlUrl = j.html_url;
-                } catch { /* the issue exists either way */ }
+                if (json.success) {
+                    num = json.data.number ? `#${json.data.number}` : '';
+                    if (json.data.html_url)
+                        htmlUrl = json.data.html_url;
+                }
                 console.info(`[HiveMonitor] Successfully filed idea issue ${num} on repo ${repo}`);
                 onFiled(num, htmlUrl);
                 return;
             }
-            let why = `HTTP ${code}`;
-            try {
-                const j = JSON.parse(new TextDecoder().decode(bytes.get_data()));
-                if (j.message)
-                    why = j.message;
-            } catch { /* keep the status code */ }
+            const why = extractGitHubErrorMessage(bytes, `HTTP ${code}`);
             console.error(`[HiveMonitor] GitHub API error filing idea on ${repo}: ${why}`);
             onError(_('GitHub refused the idea: %s').format(why));
         });

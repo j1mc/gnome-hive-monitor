@@ -7,11 +7,11 @@
  * whichever outcome it gets; it does not itself touch Soup.
  */
 
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {classifyNetworkError, tryParseJson} from './httpClient.js';
 
 /**
  * Fetch the hive's compact status widget.
@@ -51,7 +51,7 @@ export function fetchWidgetStatus(session, cancellable, url, token, {onSuccess, 
             try {
                 bytes = session_.send_and_read_finish(res);
             } catch (e) {
-                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
+                if (classifyNetworkError(e) !== 'cancelled') {
                     console.error(`[HiveMonitor] Network error fetching widget status: ${e.message ?? e}`);
                     onError(_('Cannot reach the hive.'), String(e.message ?? e));
                 }
@@ -72,14 +72,14 @@ export function fetchWidgetStatus(session, cancellable, url, token, {onSuccess, 
                 onError(_('Hive returned HTTP %d.').format(code), '');
                 return;
             }
-            try {
-                const txt = new TextDecoder().decode(bytes.get_data());
-                const data = JSON.parse(txt);
-                console.debug(`[HiveMonitor] Successfully updated status (mode: ${data.mode ?? 'unknown'}, issues: ${data.issues ?? 0}, prs: ${data.prs ?? 0})`);
-                onSuccess(data);
-            } catch (e) {
-                console.error(`[HiveMonitor] Failed to parse hive JSON response: ${e.message ?? e}`);
-                onError(_('Unreadable response.'), String(e.message ?? e));
+            const json = tryParseJson(bytes);
+            if (!json.success) {
+                console.error(`[HiveMonitor] Failed to parse hive JSON response: ${json.error}`);
+                onError(_('Unreadable response.'), json.error);
+                return;
             }
+            const data = json.data;
+            console.debug(`[HiveMonitor] Successfully updated status (mode: ${data.mode ?? 'unknown'}, issues: ${data.issues ?? 0}, prs: ${data.prs ?? 0})`);
+            onSuccess(data);}
         });
 }
