@@ -7,11 +7,8 @@
  * whichever outcome it gets; it does not itself touch Soup.
  */
 
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
-import Soup from 'gi://Soup?version=3.0';
-
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {sendRequest} from './httpClient.js';
 
 /**
  * Fetch the hive's compact status widget.
@@ -38,26 +35,16 @@ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js'
  *   "unreachable" and "your token is wrong" need different fixes.
  */
 export function fetchWidgetStatus(session, cancellable, url, token, {onSuccess, onInvalidUrl, onError, onAuthError}) {
-    const msg = Soup.Message.new('GET', `${url}/api/widget`);
-    if (!msg) {
-        onInvalidUrl(_('That hive URL is not valid.'));
-        return;
-    }
-    msg.request_headers.append('X-Hive-Internal', token);
+    const fullUrl = `${url}/api/widget`;
 
-    session.send_and_read_async(
-        msg, GLib.PRIORITY_DEFAULT, cancellable, (session_, res) => {
-            let bytes;
-            try {
-                bytes = session_.send_and_read_finish(res);
-            } catch (e) {
-                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
-                    console.error(`[HiveMonitor] Network error fetching widget status: ${e.message ?? e}`);
-                    onError(_('Cannot reach the hive.'), String(e.message ?? e));
-                }
-                return;
-            }
-            const code = msg.get_status();
+    sendRequest(
+        session,
+        cancellable,
+        fullUrl,
+        (msg) => {
+            msg.request_headers.append('X-Hive-Internal', token);
+        },
+        (code, bytes) => {
             if (code === 401 || code === 403) {
                 // Distinguished on purpose: "unreachable" and "your token is
                 // wrong" need different fixes, and a single generic error
@@ -81,5 +68,10 @@ export function fetchWidgetStatus(session, cancellable, url, token, {onSuccess, 
                 console.error(`[HiveMonitor] Failed to parse hive JSON response: ${e.message ?? e}`);
                 onError(_('Unreadable response.'), String(e.message ?? e));
             }
-        });
+        },
+        (err) => {
+            console.error(`[HiveMonitor] Network error fetching widget status: ${err}`);
+            onError(_('Cannot reach the hive.'), err);
+        }
+    );
 }

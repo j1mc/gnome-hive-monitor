@@ -7,11 +7,11 @@
  * touch Soup or the GitHub API's JSON shapes.
  */
 
-import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {sendRequest} from './httpClient.js';
 
 const AGENT_URL = 'gnome-shell-hive-monitor/1';
 
@@ -36,39 +36,27 @@ const AGENT_URL = 'gnome-shell-hive-monitor/1';
  *   cancellation.
  */
 export function fileIssue(session, cancellable, repo, token, labels, title, body, {onFiled, onError}) {
-    const msg = Soup.Message.new('POST', `https://api.github.com/repos/${repo}/issues`);
-    if (!msg) {
-        onError(_('“%s” is not a valid owner/name.').format(repo));
-        return;
-    }
-    msg.request_headers.append('Authorization', `Bearer ${token}`);
-    msg.request_headers.append('Accept', 'application/vnd.github+json');
-    // GitHub 403s a request with no User-Agent, which reads as a bad token
-    // rather than a missing header. Always send one.
-    msg.request_headers.append('User-Agent', AGENT_URL);
-
+    const url = `https://api.github.com/repos/${repo}/issues`;
     const payload = JSON.stringify({
         title,
         body: `${body ? body + '\n\n' : ''}— filed from the GNOME Hive Monitor`,
         labels,
     });
-    msg.set_request_body_from_bytes(
-        'application/json',
-        new GLib.Bytes(new TextEncoder().encode(payload)));
 
-    session.send_and_read_async(
-        msg, GLib.PRIORITY_DEFAULT, cancellable, (session_, res) => {
-            let bytes;
-            try {
-                bytes = session_.send_and_read_finish(res);
-            } catch (e) {
-                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
-                    console.error(`[HiveMonitor] Network error filing idea to GitHub: ${e.message ?? e}`);
-                    onError(_('Could not file the idea: %s').format(String(e.message ?? e)));
-                }
-                return;
-            }
-            const code = msg.get_status();
+    sendRequest(
+        session,
+        cancellable,
+        url,
+        (msg) => {
+            msg.set_method('POST');
+            msg.request_headers.append('Authorization', `Bearer ${token}`);
+            msg.request_headers.append('Accept', 'application/vnd.github+json');
+            msg.request_headers.append('User-Agent', AGENT_URL);
+            msg.set_request_body_from_bytes(
+                'application/json',
+                new GLib.Bytes(new TextEncoder().encode(payload)));
+        },
+        (code, bytes) => {
             if (code === 201) {
                 let num = '';
                 let htmlUrl = null;
@@ -90,5 +78,10 @@ export function fileIssue(session, cancellable, repo, token, labels, title, body
             } catch { /* keep the status code */ }
             console.error(`[HiveMonitor] GitHub API error filing idea on ${repo}: ${why}`);
             onError(_('GitHub refused the idea: %s').format(why));
-        });
+        },
+        (err) => {
+            console.error(`[HiveMonitor] Network error filing idea to GitHub: ${err}`);
+            onError(_('Could not file the idea: %s').format(err));
+        }
+    );
 }
