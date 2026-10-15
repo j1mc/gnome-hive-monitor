@@ -205,18 +205,21 @@ class HiveIndicator extends PanelMenu.Button {
         if (!raw)
             return '';
 
+        // GJS has no WHATWG URL global; GLib.Uri is the available parser.
         let parsed;
         try {
-            parsed = new URL(raw);
+            parsed = GLib.Uri.parse(raw, GLib.UriFlags.NONE);
         } catch {
             return '';
         }
 
-        if (parsed.protocol !== 'https:' || !parsed.hostname ||
-            parsed.username || parsed.password)
+        // The token is sent on every poll, so never over cleartext or with
+        // credentials embedded in the URL.
+        if (parsed.get_scheme()?.toLowerCase() !== 'https' ||
+            !parsed.get_host() || parsed.get_userinfo())
             return '';
 
-        return parsed.href.replace(/\/+$/, '');
+        return parsed.to_string().replace(/\/+$/, '');
     }
 
     /* Abort the in-flight status poll and invalidate its reply, so a status
