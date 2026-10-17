@@ -2,6 +2,19 @@
 
 Thank you for your interest in Hive Monitor! This document shows how to develop locally, check the schema, pack the extension, and send pull requests.
 
+<!-- hive-contribute-plea: donated-compute appeal, keep in sync across repos -->
+## Contribute compute — no code needed
+
+**[Donate time with your AI CLI](https://hub.tunaos.org/#contribute).**
+
+Your machine runs one task at a time using your signed-in AI coding CLI.
+The relay alternates between eligible **School** (OS) and **Reef** (apps)
+hives after each task. If one hive has no work, the other can continue.
+
+The guide covers prerequisites, verified `just` setup, credentials, provider
+costs, and how to stop with Ctrl+C. Your subscription quota or API charges apply.
+Never post account credentials or API keys in issues or pull requests.
+
 ## Architecture and Requirements
 
 Hive Monitor is a GNOME Shell extension for GNOME Shell 45–50. It uses standard ECMAScript modules (ESM) and GObject Introspection (`gi://`).
@@ -82,10 +95,3 @@ gnome-extensions pack --force --extra-source=schemas/
 1. **Sign Your Commits**: All commits must follow the Developer Certificate of Origin (DCO) standard using `git commit -s`.
 2. **Atomic Changes**: Keep PRs focused on a single feature, bug fix, or documentation update.
 3. **Compatibility**: Ensure any new API usage remains compatible across the supported GNOME Shell versions (45–50).
-
-<!-- hive-contribute-plea: donated-compute appeal, keep in sync across repos -->
-## Contribute compute — no code needed
-
-No time to write code? You can still push this project's backlog forward. A TunaOS AI-agent hive works on this repository. Lend the hive your AI subscription or API tokens, and your machine runs contributor tasks from this project's backlog.
-
-- 🪸 [Contribute compute to the reef hive](https://reef.tunaos.org/contribute)
