@@ -34,6 +34,12 @@ class TestMetadata(unittest.TestCase):
         schema_id = self.metadata.get("settings-schema")
         self.assertEqual(schema_id, "org.gnome.shell.extensions.hive-monitor")
 
+    def test_project_url_matches_repository(self):
+        self.assertEqual(
+            self.metadata.get("url"),
+            "https://github.com/tuna-os/gnome-hive-monitor",
+        )
+
 
 class TestGSettingsSchema(unittest.TestCase):
     def setUp(self):
