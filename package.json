@@ -1,0 +1,11 @@
+{
+  "name": "gnome-hive-monitor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "10.13.0"
+  }
+}
