@@ -71,7 +71,7 @@ npm ci --ignore-scripts
 npm run lint
 ```
 
-The lint configuration checks common JavaScript errors, including undefined variables. It does not execute the extension or replace testing in GNOME Shell.
+ESLint finds common errors in the JavaScript, for example undefined variables. It does not run the extension. You must still test the extension in GNOME Shell.
 
 ### 1. Schema Compilation Verification
 
